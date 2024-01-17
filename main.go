@@ -6,46 +6,92 @@ import (
 	"os"
 )
 
-type flashcard struct {
-	term       string
-	definition string
-}
-
 func main() {
-	var cards []flashcard
 	cardCount := readInt("Input the number of cards:")
 
-	for i := 1; i <= cardCount; i++ {
-		cards = append(cards, createCard(i))
-	}
+	cards := createCards(cardCount)
+	quizCards(cards)
 
-	for _, card := range cards {
-		answerPrompt := fmt.Sprintf("Print the definition of \"%s\":", card.term)
+	return
+}
+
+func quizCards(cards map[string]string) {
+	for key, val := range cards {
+		answerPrompt := fmt.Sprintf("Print the definition of \"%s\"", key)
 		answer := readLine(answerPrompt)
-		checkAnswer(card, answer)
+
+		if answer == val {
+			fmt.Println("Correct!")
+			continue
+		} else if definitionExists(answer, cards) {
+			val2 := getTermFor(answer, cards)
+			fmt.Printf("Wrong. The right answer is \"%s\", but your definition is correct for \"%s\".\n", val, val2)
+		} else {
+			fmt.Printf("Wrong. The right answer is \"%s\".\n", val)
+		}
 	}
 
 	return
 }
 
-func checkAnswer(card flashcard, answer string) {
-	if answer == card.definition {
-		fmt.Println("Correct!")
-		return
+func getTermFor(definition string, cards map[string]string) (term string) {
+	for key, val := range cards {
+		if val == definition {
+			term = key
+			break
+		}
 	}
 
-	fmt.Printf("Wrong. The right answer is \"%s\"\n", card.definition)
-	return
+	return term
 }
 
-func createCard(i int) (card flashcard) {
-	termPrompt := fmt.Sprintf("The term for card #%d:", i)
-	definitionPrompt := fmt.Sprintf("The definition for card #%d:", i)
+func createCards(cardCount int) (cards map[string]string) {
+	cards = make(map[string]string)
+	for i := 1; i <= cardCount; i++ {
+		term := getNewTerm(cards, i)
+		definition := getNewDefinition(cards, i)
+		cards[term] = definition
+	}
 
-	card.term = readLine(termPrompt)
-	card.definition = readLine(definitionPrompt)
+	return cards
+}
 
-	return card
+func getNewDefinition(cards map[string]string, cardNum int) (definition string) {
+	initialPrompt := fmt.Sprintf("The definition for card #%d:", cardNum)
+	definition = readLine(initialPrompt)
+
+	for {
+		if !definitionExists(definition, cards) {
+			return definition
+		}
+
+		newPrompt := fmt.Sprintf("The definition \"%s\" already exists. Try again:", definition)
+		definition = readLine(newPrompt)
+	}
+}
+
+func definitionExists(definition string, cards map[string]string) (exists bool) {
+	for _, val := range cards {
+		if definition == val {
+			return true
+		}
+	}
+
+	return false
+}
+
+func getNewTerm(cards map[string]string, cardNum int) (term string) {
+	initialPrompt := fmt.Sprintf("The term for card #%d:", cardNum)
+	term = readLine(initialPrompt)
+
+	for {
+		if _, ok := cards[term]; !ok {
+			return term
+		}
+
+		newPrompt := fmt.Sprintf("The term \"%s\" already exists. Try again:", term)
+		term = readLine(newPrompt)
+	}
 }
 
 func readLine(prompt string) (line string) {
