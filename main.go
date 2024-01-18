@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"os"
 	"sort"
@@ -15,27 +16,36 @@ type Card struct {
 	missed     int
 }
 
-const menuPrompt string = "\nInput the action (add, remove, import, export, ask, exit, log, hardest card, reset stats):"
+const (
+	menuPrompt      = "Input the action (add, remove, import, export, ask, exit, log, hardest card, reset stats):"
+	defaultCLImport = ""
+	defaultCLExport = ""
+)
 
 var sessionLog strings.Builder
 
 func main() {
 	var cards []Card
+	importFile := flag.String("import_from", defaultCLImport, "Enter a file name to import cards")
+	exportFile := flag.String("export_to", defaultCLExport, "Enter a file name to export cards to on exit")
+	flag.Parse()
+	checkForCLImport(&cards, *importFile)
 
 	for {
-		switch action := readLine(menuPrompt); action {
+		switch action := readLine("\n" + menuPrompt); action {
 		case "add":
 			add(&cards)
 		case "remove":
 			remove(&cards)
 		case "import":
-			import_(&cards)
+			import_(&cards, readLine("File name:"))
 		case "export":
-			export(cards)
+			export(cards, *exportFile)
 		case "ask":
 			ask(&cards)
 		case "exit":
 			logPrintln("Bye bye!")
+			export(cards, *exportFile)
 			return
 		case "log":
 			log_()
@@ -48,6 +58,13 @@ func main() {
 			logPrintln(msg)
 		}
 	}
+}
+
+func checkForCLImport(cards *[]Card, importFile string) {
+	if importFile != defaultCLImport {
+		import_(cards, importFile)
+	}
+	return
 }
 
 func resetStats(cards *[]Card) {
@@ -137,9 +154,11 @@ func quizCards(cards *[]Card, count int) {
 	return
 }
 
-func export(cards []Card) {
-	fileName := readLine("File name:")
-	file, _ := os.Create(fileName)
+func export(cards []Card, exportFile string) {
+	if exportFile == defaultCLExport {
+		exportFile = readLine("File name:")
+	}
+	file, _ := os.Create(exportFile)
 
 	for _, card := range cards {
 		fmt.Fprintln(file, card.term, card.definition, card.missed)
@@ -150,8 +169,7 @@ func export(cards []Card) {
 	return
 }
 
-func import_(cards *[]Card) {
-	fileName := readLine("File name:")
+func import_(cards *[]Card, fileName string) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		logPrintln("File not found")
