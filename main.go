@@ -20,6 +20,11 @@ const (
 	menuPrompt      = "Input the action (add, remove, import, export, ask, exit, log, hardest card, reset stats):"
 	defaultCLImport = ""
 	defaultCLExport = ""
+	Blue   = "\033[34m"
+	Reset  = "\033[0m"
+	Green  = "\033[32m"
+	Red = "\033[31m"
+	Cyan = "\033[36m"
 )
 
 var sessionLog strings.Builder
@@ -32,19 +37,19 @@ func main() {
 	checkForCLImport(&cards, *importFile)
 
 	for {
-		switch action := readLine("\n" + menuPrompt); action {
+		switch action := readLine("\n" + Blue + menuPrompt + Reset); action {
 		case "add":
 			add(&cards)
 		case "remove":
 			remove(&cards)
 		case "import":
-			import_(&cards, readLine("File name:"))
+			import_(&cards, readLine(Blue + "File to import cards from:" + Reset))
 		case "export":
 			export(cards, *exportFile)
 		case "ask":
 			ask(&cards)
 		case "exit":
-			logPrintln("Bye bye!")
+			logPrintln(Blue + "Bye bye!")
 			export(cards, *exportFile)
 			return
 		case "log":
@@ -54,8 +59,7 @@ func main() {
 		case "reset stats":
 			resetStats(&cards)
 		default:
-			msg := fmt.Sprintf("Command %s not recognized. Please enter another command.", action)
-			logPrintln(msg)
+			logPrintln(Red + `Command "` + action + `" not recognized. Please enter another command.` + Reset)
 		}
 	}
 }
@@ -72,7 +76,7 @@ func resetStats(cards *[]Card) {
 		(*cards)[i].missed = 0
 	}
 
-	logPrintln("Card statistics have been reset")
+	logPrintln(Green + "Card statistics have been reset" + Reset)
 	return
 }
 
@@ -81,7 +85,7 @@ func hardestCard(cards []Card) {
 		return cards[i].missed > cards[j].missed
 	})
 
-	noCardsMsg := "There are no cards with errors."
+	noCardsMsg := Green + "There are no cards with errors." + Reset
 	if len(cards) == 0 || cards[0].missed == 0 {
 		logPrintln(noCardsMsg)
 		return
@@ -96,8 +100,7 @@ func hardestCard(cards []Card) {
 	}
 
 	if len(terms) == 1 {
-		msg := fmt.Sprintf("The hardest card is \"%s\". You have %d errors answering it.", terms[0], cards[0].missed)
-		logPrintln(msg)
+		logPrintln(Green + `The hardest card is "` + terms[0] + `". You have ` + strconv.Itoa(cards[0].missed) + ` errors answering it.` + Reset)
 		return
 	}
 
@@ -106,49 +109,47 @@ func hardestCard(cards []Card) {
 		hardestMsg += fmt.Sprintf(", \"%s\"", term)
 	}
 
-	logPrintln(hardestMsg)
+	logPrintln(Green + hardestMsg + Reset)
 	return
 }
 
 func log_() {
-	fileName := readLine("File name:")
+	fileName := readLine(Blue + "File name:" + Reset)
 	file, _ := os.Create(fileName)
 	defer file.Close()
 
 	file.WriteString(sessionLog.String())
-	logPrintln("The log has been saved")
+	logPrintln(Green + "The log has been saved." + Reset)
 	return
 }
 
 func ask(cards *[]Card) {
 	if len(*cards) == 0 {
-		logPrintln("No cards yet!")
+		logPrintln(Red + "No cards yet!" + Reset)
+		return
 	}
-	count := readInt("How many times to ask?")
+	count := readInt(Blue + "How many cards?" + Reset)
 	quizCards(cards, count)
+	return
 }
 
 func quizCards(cards *[]Card, count int) {
 	for i := 0; i < count; i++ {
 		index := i % len(*cards)
 
-		answerPrompt := fmt.Sprintf("Print the definition of \"%s\"", (*cards)[index].term)
-		answer := readLine(answerPrompt)
-
+		answer := readLine(Blue + "Card: \"" + Cyan + (*cards)[index].term + Reset + Blue + "\"\nAnswer:" + Reset)
 		if answer == (*cards)[index].definition {
-			logPrintln("Correct!")
+			logPrintln(Green + "Correct!" + Reset)
 			continue
 		}
 
 		(*cards)[index].missed++
 		if definitionExists(answer, *cards) {
 			val2 := getTermFor(answer, *cards)
-			format := "Wrong. The right answer is \"%s\", but your definition is correct for \"%s\"."
-			msg := fmt.Sprintf(format, (*cards)[index].definition, val2)
+			msg := Red + "Wrong. The right answer is \"" + (*cards)[index].definition + "\", but your definition is correct for \"" + val2 + "\"." + Reset
 			logPrintln(msg)
 		} else {
-			msg := fmt.Sprintf("Wrong. The right answer is \"%s\".", (*cards)[index].definition)
-			logPrintln(msg)
+			logPrintln(Red + "Wrong. The right answer is \"" + (*cards)[index].definition + "\"." + Reset)
 		}
 	}
 	return
@@ -156,7 +157,7 @@ func quizCards(cards *[]Card, count int) {
 
 func export(cards []Card, exportFile string) {
 	if exportFile == defaultCLExport {
-		exportFile = readLine("File name:")
+		exportFile = readLine(Blue + "\nFile path to export cards to:" + Reset)
 	}
 	file, _ := os.Create(exportFile)
 
@@ -164,15 +165,15 @@ func export(cards []Card, exportFile string) {
 		fmt.Fprintln(file, card.term, card.definition, card.missed)
 	}
 
-	msg := fmt.Sprintf("%d cards have been saved.", len(cards))
-	logPrintln(msg)
+
+	logPrintln(Green + strconv.Itoa(len(cards)) + " cards have been saved." + Reset)
 	return
 }
 
 func import_(cards *[]Card, fileName string) {
 	file, err := os.Open(fileName)
 	if err != nil {
-		logPrintln("File not found")
+		logPrintln(Red + "File not found" + Reset)
 		return
 	}
 	defer file.Close()
@@ -185,8 +186,7 @@ func import_(cards *[]Card, fileName string) {
 		loadedCards++
 	}
 
-	msg := fmt.Sprintf("%d cards have been loaded.", loadedCards)
-	logPrintln(msg)
+	logPrintln(Green + strconv.Itoa(loadedCards) + " cards have been loaded." + Reset)
 	return
 }
 
@@ -210,7 +210,7 @@ func addImportCard(cards *[]Card, cardText string) {
 }
 
 func remove(cards *[]Card) {
-	cardToDelete := readLine("Which card?")
+	cardToDelete := readLine(Blue + "Which card? (enter the front term/sentence of the card)" + Reset)
 	var newCards []Card
 
 	for _, card := range *cards {
@@ -220,10 +220,9 @@ func remove(cards *[]Card) {
 	}
 
 	if len(*cards) == len(newCards) {
-		msg := fmt.Sprintf("Can't remove \"%s\": there is no such card.", cardToDelete)
-		logPrintln(msg)
+		logPrintln(Red + "Can't remove \"" + cardToDelete + "\": there is no such card." + Reset)
 	} else {
-		logPrintln("The card has been removed.")
+		logPrintln(Green + "The card has been removed." + Reset)
 		*cards = newCards
 	}
 
@@ -238,19 +237,17 @@ func add(cards *[]Card) {
 	}
 	*cards = append(*cards, newCard)
 
-	msg := fmt.Sprintf("The pair (\"%s\":\"%s\") has been added", newCard.term, newCard.definition)
-	logPrintln(msg)
+	logPrintln(Green + `The pair ("` + newCard.term + `":"` + newCard.definition + `") has been added` + Reset)
 	return
 }
 
 func getNewTerm(cards []Card) (newTerm string) {
-	newTerm = readLine("The card")
+	newTerm = readLine(Blue + "\nNew card front:" + Reset)
 	for {
 		if !termExists(newTerm, cards) {
 			return newTerm
 		}
-		newPrompt := fmt.Sprintf("The term \"%s\" already exists. Try again:", newTerm)
-		newTerm = readLine(newPrompt)
+		newTerm = readLine(Red + `The term "` + newTerm + `" already exists. Try a different term:` + Reset)
 	}
 }
 
@@ -265,15 +262,14 @@ func termExists(term string, cards []Card) (exists bool) {
 }
 
 func getNewDefinition(cards []Card) (newDefinition string) {
-	newDefinition = readLine("The definition of the card")
+	newDefinition = readLine(Blue + "New card back:" + Reset)
 
 	for {
 		if !definitionExists(newDefinition, cards) {
 			return newDefinition
 		}
 
-		newPrompt := fmt.Sprintf("The definition \"%s\" already exists. Try again:", newDefinition)
-		newDefinition = readLine(newPrompt)
+		newDefinition = readLine(Red + `The definition "` + newDefinition + `" already exists. Try a different definition:` + Reset)
 	}
 }
 
